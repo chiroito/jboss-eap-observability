@@ -1,0 +1,74 @@
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.149.0
+    command: [--config=/etc/otel-collector-config.yaml]
+    volumes:
+      - ./otel-collector/otel-collector-config.yaml:/etc/otel-collector-config.yaml:Z
+      - ${JBOSS_EAP_LOG_DIR}:/host/jboss-eap/log:ro${VOLUME_SELINUX_SUFFIX}
+    ports:
+      - 1888:1888 # pprof extension
+      - 13133:13133 # health_check extension
+      - 4317:4317 # OTLP gRPC receiver
+      - 4318:4318 # OTLP http receiver
+      - 55679:55679 # zpages extension
+      - 9464:9464   # Prometheus scrape endpoint for Collector-exported metrics
+    depends_on:
+      - jaeger
+      - tempo
+      - loki
+
+  prometheus:
+    image: prom/prometheus:latest
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --web.enable-otlp-receiver
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:Z
+    ports:
+      - "9090:9090"
+    depends_on:
+      - otel-collector
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.76.0
+    environment:
+      COLLECTOR_OTLP_ENABLED: true
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "4317"         # internal only, Collector -> Jaeger
+      - "4318"         # internal only, not used here but available in image
+
+  grafana:
+    image: grafana/grafana:12.4.2
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:Z
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+
+  tempo:
+    image: grafana/tempo:2.10.3
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./tempo/tempo.yaml:/etc/tempo.yaml:ro,Z
+    ports:
+      - "3200:3200"   # Tempo HTTP API / query frontend
+      - "4317"   # Optional host access to Tempo OTLP gRPC (debug only)
+      - "4318"   # Optional host access to Tempo OTLP HTTP (debug only)
+
+  loki:
+    image: grafana/loki:3.7.1
+    command: ["-config.file=/etc/loki/loki-config.yaml"]
+    volumes:
+      - ./loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro,Z
+    ports:
+      - "3100:3100"

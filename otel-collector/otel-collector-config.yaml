@@ -1,0 +1,106 @@
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+  pprof:
+    endpoint: 0.0.0.0:1777
+  zpages:
+    endpoint: 0.0.0.0:55679
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+  filelog/jboss_eap_gc:
+    include:
+      - /host/jboss-eap/log/gc.log*
+    start_at: beginning
+    include_file_path: true
+    include_file_name: true
+    operators:
+      - type: regex_parser
+        regex: '^\[(?P<gc_timestamp>[^\]]+)\]\[(?P<gc_uptime_ms>\d+)ms\]\[(?P<gc_loglevel>[^\]]+)\]\s(?P<message>.*)$'
+        timestamp:
+          parse_from: attributes.gc_timestamp
+          layout_type: strptime
+          layout: '%Y-%m-%dT%H:%M:%S.%f%z'
+        severity:
+          parse_from: attributes.gc_loglevel
+
+      - type: move
+        from: attributes.message
+        to: body
+
+      - type: add
+        field: resource["service.name"]
+        value: hello-app
+
+      - type: add
+        field: attributes.log_type
+        value: jboss-eap-gc
+
+processors:
+  batch:
+  resource/jboss_eap_logs:
+    attributes:
+      - action: upsert
+        key: service.name
+        value: hello-app
+      - action: upsert
+        key: service.namespace
+        value: jboss-eap
+      - action: upsert
+        key: host.name
+        value: local-host
+
+exporters:
+  debug:
+    verbosity: normal
+
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+    tls:
+      insecure: true
+
+  prometheus:
+    endpoint: 0.0.0.0:9464
+    resource_to_telemetry_conversion:
+      enabled: true
+
+service:
+  extensions: [health_check, pprof, zpages]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp/tempo, otlp/jaeger]
+
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheus]
+
+    logs:
+      receivers: [otlp, filelog/jboss_eap_gc]
+      processors: [resource/jboss_eap_logs, batch]
+      exporters: [otlphttp/loki]
+
+
+
+
+
+
+

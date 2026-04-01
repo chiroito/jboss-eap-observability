@@ -1,0 +1,40 @@
+# CLI script to enable micrometer for the quickstart application in the application server
+#if (outcome != success) of /extension=org.wildfly.extension.micrometer:read-resource
+#    /extension=org.wildfly.extension.micrometer:add
+#    /subsystem=micrometer:add()
+#end-if
+# CLI script to enable OpenTelemetry for the quickstart application in the application server
+#if (outcome != success) of /extension=org.wildfly.extension.opentelemetry:read-resource
+#    /extension=org.wildfly.extension.opentelemetry:add()
+#    /subsystem=opentelemetry:add()
+#end-if
+
+
+# Configure the endpoint for metrics publication
+/subsystem=micrometer:write-attribute(name=endpoint, value="http://localhost:4318/v1/metrics")
+/subsystem=micrometer:write-attribute(name="step",value="15")
+
+/subsystem=opentelemetry:write-attribute(name=endpoint,value=http://localhost:4317)
+/subsystem=opentelemetry:write-attribute(name=exporter-type,value=otlp)
+/subsystem=opentelemetry:write-attribute(name=sampler-type,value=on)
+/subsystem=opentelemetry:write-attribute(name=service-name, value=hello-app)
+/subsystem=opentelemetry:write-attribute(name=max-export-batch-size,value=512)
+/system-property=otel.sdk.disabled:add(value=false)
+
+#/subsystem=opentelemetry:write-attribute(name=endpoint,value=http://localhost:4317)
+#/subsystem=opentelemetry:write-attribute(name=exporter-type,value=otlp)
+#/subsystem=opentelemetry:write-attribute(name=service-name, value=hello-app)
+#/subsystem=opentelemetry:write-attribute(name=span-processor-type, value=simple)
+#/subsystem=opentelemetry:write-attribute(name=sampler-type,value=on)
+#/subsystem=opentelemetry:write-attribute(name=max-export-batch-size,value=512)
+#/subsystem=opentelemetry:write-attribute(name=ratio,value=1.0)
+
+#/system-property=otel.metrics.exporter:add(value=none)
+
+#メトリクスをローカルで見る
+#/system-property=org.jboss.eap.xp.micrometer.prometheus.context:add(value="/metrics")
+#/system-property=org.jboss.eap.xp.micrometer.prometheus.security-enabled:add(value=false)
+
+
+/subsystem=opentelemetry:read-resource(include-defaults=true,recursive=true)
+/subsystem=micrometer:read-resource(include-defaults=true,recursive=true)

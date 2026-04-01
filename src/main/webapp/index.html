@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>JBoss EAP Observability Demo</title>
+</head>
+<body>
+<h2>JBoss EAP Observability Demo</h2>
+<ul>
+    <li><a href="/api/hello">Hello REST API</a></li>
+    <li><a href="http://localhost:9990/health">Health Check (JBoss EAP)</a></li>
+    <li><a href="http://localhost:9990/metrics">Metrics (JBoss EAP)</a></li>
+    <li><a href="http://localhost:3000/a/grafana-metricsdrilldown-app/drilldown">Metrics (Grafana + Prometheus)</a></li>
+    <li><a href="http://localhost:3000/a/grafana-exploretraces-app/explore?actionView=traceList">Tracing (Grafana + Tempo)</a></li>
+    <li><a href="http://localhost:3000/a/grafana-lokiexplore-app/explore/service/hello-app/logs?var-filters=service_name%7C%3D%7Chello-app">Log (Grafana + Loki)</a></li>
+    <li><a href="http://localhost:16686/search">Tracing (Jaeger)</a></li>
+    <li>JDK Flight RecorderはJDK Mission Controlを使ってダンプしてください</li>
+</ul>
+</body>
+</html>
