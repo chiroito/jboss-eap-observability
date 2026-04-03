@@ -7,14 +7,15 @@
 <body>
 <h2>JBoss EAP Observability Demo</h2>
 <ul>
-    <li><a href="/api/hello">Hello REST API</a></li>
+    <li><a href="/api/helloxp">Hello REST API (JBoss EAP 8.x + XP 6.0)</a></li>
     <li><a href="http://localhost:9990/health">Health Check (JBoss EAP)</a></li>
     <li><a href="http://localhost:9990/metrics">Metrics (JBoss EAP)</a></li>
     <li><a href="http://localhost:3000/a/grafana-metricsdrilldown-app/drilldown">Metrics (Grafana + Prometheus)</a></li>
+    <li><a href="http://localhost:9090">Metrics (Prometheus)</a></li>
     <li><a href="http://localhost:3000/a/grafana-exploretraces-app/explore?actionView=traceList">Tracing (Grafana + Tempo)</a></li>
     <li><a href="http://localhost:3000/a/grafana-lokiexplore-app/explore/service/hello-app/logs?var-filters=service_name%7C%3D%7Chello-app">Log (Grafana + Loki)</a></li>
     <li><a href="http://localhost:16686/search">Tracing (Jaeger)</a></li>
-    <li>JDK Flight RecorderはJDK Mission Controlを使ってダンプしてください</li>
+    <li>Please connect to service:jmx:remote+http://localhost:9990 using JDK Mission Control to dump the JFR recording.</li>
 </ul>
 </body>
 </html>

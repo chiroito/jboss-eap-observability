@@ -1,27 +1,10 @@
 services:
-  jboss:
-    image: quay.io/cito/jboss-eap-observability:8.1-xp6.0
-    environment:
-      JAVA_OPTS: >-
-        -Xlog:gc*:file=/home/jboss/target/server/standalone/log/gc.log:time,uptimemillis,level:filecount=5,filesize=3M
-        -XX:StartFlightRecording=name=default
-      OTEL_COLLECTOR: otel-collector
-      ADMIN_USERNAME: admin
-      ADMIN_PASSWORD: admin
-    volumes:
-      - jboss_log:/home/jboss/target/server/standalone/log:rw
-    ports:
-      - 8080:8080
-      - 9990:9990
-    depends_on:
-      - otel-collector
-
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.149.0
     command: [--config=/etc/otel-collector-config.yaml]
     volumes:
       - ./otel-collector/otel-collector-config.yaml:/etc/otel-collector-config.yaml:Z
-      - jboss_log:/host/jboss-eap/log:ro${VOLUME_SELINUX_SUFFIX}
+      - ./target/server/standalone/log:/host/jboss-eap/log:ro${VOLUME_SELINUX_SUFFIX}
     ports:
       - 1888 # pprof extension
       - 13133 # health_check extension
@@ -89,6 +72,3 @@ services:
       - ./loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro,Z
     ports:
       - 3100
-
-volumes:
-  jboss_log:

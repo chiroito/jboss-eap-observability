@@ -1,6 +1,15 @@
 # 実行方法
 
-## Windows
+## for Demo
+
+```shell
+podman compose up -d
+```
+Top Page: http://localhost:8080
+
+## for Development
+
+### Windows
 ```
 chcp 65001
 mvn package

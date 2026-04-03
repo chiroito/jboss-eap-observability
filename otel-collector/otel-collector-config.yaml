@@ -97,10 +97,3 @@ service:
       receivers: [otlp, filelog/jboss_eap_gc]
       processors: [resource/jboss_eap_logs, batch]
       exporters: [otlphttp/loki]
-
-
-
-
-
-
-

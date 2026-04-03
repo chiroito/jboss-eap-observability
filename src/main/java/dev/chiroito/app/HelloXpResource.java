@@ -1,6 +1,7 @@
 package dev.chiroito.app;
 
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
@@ -12,14 +13,13 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
-import io.micrometer.core.instrument.MeterRegistry;
 
 import java.util.concurrent.TimeUnit;
 
 
-@Path("/hello")
+@Path("/helloxp")
 @ApplicationScoped
-public class HelloResource {
+public class HelloXpResource {
 
     @Inject
     private MeterRegistry registry;
@@ -39,33 +39,24 @@ public class HelloResource {
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public String success() {
-        Span span = tracer.spanBuilder("prepare-hello").startSpan();
-        try(Scope scope = span.makeCurrent()) {
-            counter.increment();
-            String message = superSlowMethod();
-            return message;
-        } catch (RuntimeException e) {
-            span.recordException(e);
-            span.setStatus(StatusCode.ERROR);
-            throw e;
-        } finally {
-            span.end();
-            System.out.println("Hello");
-        }
+    public String hello() {
+        counter.increment();
+        String message = superSlowMethod();
+        System.out.println(message);
+        return message;
     }
 
-    private String superSlowMethod(){
+    private String superSlowMethod() {
         Span span = tracer.spanBuilder("super-slow").startSpan();
-        try(Scope scope = span.makeCurrent()) {
-            TimeUnit.MICROSECONDS.sleep(500);
+        try (Scope scope = span.makeCurrent()) {
+            TimeUnit.MILLISECONDS.sleep(500);
             return "Hello";
         } catch (Exception e) {
             span.recordException(e);
             span.setStatus(StatusCode.ERROR);
             RuntimeException re = new RuntimeException(e);
             throw re;
-        }finally {
+        } finally {
             span.end();
         }
     }
