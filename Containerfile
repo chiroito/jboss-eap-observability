@@ -1,6 +1,6 @@
 # Use EAP 8 Builder image to create a JBoss EAP 8 server
 # https://github.com/jboss-container-images/jboss-eap-8-openshift-image
-FROM registry.redhat.io/jboss-eap-8/eap81-openjdk21-builder-openshift-rhel9:1.0.0.GA AS builder
+FROM registry.access.redhat.com/jboss-eap-8/eap81-openjdk21-builder-openshift-rhel9:1.0.0.GA-24.1774967320 AS builder
 
 # Set up environment variables for provisioning.
 ENV MAVEN_REPO /home/jboss/.m2/repository
@@ -13,7 +13,7 @@ COPY --chown=jboss:root . .
 RUN --mount=type=cache,id=myCache,target=/home/jboss/.m2 mvn clean package
 
 # Copy the JBoss EAP 8 server from the builder image to the runtime image.
-FROM registry.redhat.io/jboss-eap-8/eap81-openjdk21-runtime-openshift-rhel9:1.0.0.GA AS runtime
+FROM registry.access.redhat.com/jboss-eap-8/eap81-openjdk21-runtime-openshift-rhel9:latest AS runtime
 
 # Set appropriate ownership and permissions.
 COPY --from=builder --chown=jboss:root /home/jboss/target/server $JBOSS_HOME
