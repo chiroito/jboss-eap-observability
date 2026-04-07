@@ -6,8 +6,13 @@
 </head>
 <body>
 <h2>JBoss EAP Observability Demo</h2>
+<h3>Demo Application</h3>
 <ul>
-    <li><a href="/api/helloxp">Hello REST API (JBoss EAP 8.x + XP 6.0)</a></li>
+    <li><a href="/api/hello">Hello API — Traced by the application server</a></li>
+    <li><a href="/api/helloxp">Hello API + custom telemetry (w/ XP) — Traced by the application server, with additional custom metrics and spans</a></li>
+</ul>
+<h3>Observability</h3>
+<ul>
     <li><a href="http://localhost:9990/health">Health Check (JBoss EAP)</a></li>
     <li><a href="http://localhost:9990/metrics">Metrics (JBoss EAP)</a></li>
     <li><a href="http://localhost:3000/a/grafana-metricsdrilldown-app/drilldown">Metrics (Grafana + Prometheus)</a></li>

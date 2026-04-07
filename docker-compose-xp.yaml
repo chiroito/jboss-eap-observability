@@ -1,15 +1,35 @@
 services:
+  jboss:
+    build:
+      context: .
+      dockerfile: Containerfile-xp
+    environment:
+      JAVA_OPTS: >-
+        -Xlog:gc*:file=/opt/server/standalone/log/gc.log:time,uptimemillis,level:filecount=5,filesize=3M
+        -XX:StartFlightRecording=name=default
+        -Djboss.bind.address.management=0.0.0.0
+      OTEL_COLLECTOR: otel-collector
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: admin
+    volumes:
+      - jboss_log:/opt/server/standalone/log:rw
+    ports:
+      - 8080:8080
+      - 9990:9990
+    depends_on:
+      - otel-collector
+
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.149.0
     command: [--config=/etc/otel-collector-config.yaml]
     volumes:
-      - ./otel-collector/otel-collector-config.yaml:/etc/otel-collector-config.yaml:Z
-      - ./target/server/standalone/log:/host/jboss-eap/log:ro${VOLUME_SELINUX_SUFFIX}
+      - ./otel-collector/otel-collector-config-xp.yaml:/etc/otel-collector-config.yaml:Z
+      - jboss_log:/host/jboss-eap/log:ro${VOLUME_SELINUX_SUFFIX}
     ports:
       - 1888 # pprof extension
       - 13133 # health_check extension
-      - 4317:4317 # OTLP gRPC receiver
-      - 4318:4318 # OTLP http receiver
+      - 4317 # OTLP gRPC receiver
+      - 4318 # OTLP http receiver
       - 55679 # zpages extension
       - 9464   # Prometheus scrape endpoint for Collector-exported metrics
     depends_on:
@@ -72,3 +92,6 @@ services:
       - ./loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro,Z
     ports:
       - 3100
+
+volumes:
+  jboss_log:

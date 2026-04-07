@@ -13,15 +13,6 @@ receivers:
         endpoint: 0.0.0.0:4317
       http:
         endpoint: 0.0.0.0:4318
-  prometheus/mp_metrics:
-    config:
-      scrape_configs:
-        - job_name: 'jboss-eap'
-          scrape_interval: 5s
-          metrics_path: /metrics
-          static_configs:
-            - targets:
-                - jboss:9990
 
   filelog/jboss_eap_gc:
     include:
@@ -98,9 +89,9 @@ service:
       exporters: [otlp/tempo, otlp/jaeger]
 
     metrics:
-      receivers: [otlp, prometheus/mp_metrics]
+      receivers: [otlp]
       processors: [batch]
-      exporters: [debug, prometheus]
+      exporters: [prometheus]
 
     logs:
       receivers: [otlp, filelog/jboss_eap_gc]

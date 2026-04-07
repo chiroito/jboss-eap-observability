@@ -10,7 +10,7 @@ RUN --mount=type=cache,id=myCache,target=/home/jboss/.m2 mkdir -p ${MAVEN_REPO};
 USER jboss
 # Build application and JBoss EAP
 COPY --chown=jboss:root . .
-RUN --mount=type=cache,id=myCache,target=/home/jboss/.m2 mvn clean package
+RUN --mount=type=cache,id=myCache,target=/home/jboss/.m2 mvn clean package -Pxp
 
 # Copy the JBoss EAP 8 server from the builder image to the runtime image.
 FROM registry.redhat.io/jboss-eap-8/eap81-openjdk21-runtime-openshift-rhel9:1.0.0.GA AS runtime

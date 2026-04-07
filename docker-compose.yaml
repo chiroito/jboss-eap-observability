@@ -1,15 +1,23 @@
 services:
   jboss:
-    image: quay.io/cito/jboss-eap-observability:8.1-xp6.0
+    build:
+      context: .
+      dockerfile: Containerfile
     environment:
       JAVA_OPTS: >-
-        -Xlog:gc*:file=/home/jboss/target/server/standalone/log/gc.log:time,uptimemillis,level:filecount=5,filesize=3M
+        -Xlog:gc*:file=/opt/server/standalone/log/gc.log:time,uptimemillis,level:filecount=5,filesize=3M
         -XX:StartFlightRecording=name=default
+        -Djboss.bind.address.management=0.0.0.0
+        -javaagent:/opt/server/otel/opentelemetry-javaagent.jar
+        -Dotel.service.name=hello-app
+        -Dotel.traces.exporter=otlp
+        -Dotel.metrics.exporter=otlp
+        -Dotel.exporter.otlp.endpoint=http://otel-collector:4318
       OTEL_COLLECTOR: otel-collector
       ADMIN_USERNAME: admin
       ADMIN_PASSWORD: admin
     volumes:
-      - jboss_log:/home/jboss/target/server/standalone/log:rw
+      - jboss_log:/opt/server/standalone/log:rw
     ports:
       - 8080:8080
       - 9990:9990
