@@ -26,7 +26,12 @@
     <!-- OpenTelemetry Java Agent -->
     <version.opentelemetry.javaagent>2.26.1</version.opentelemetry.javaagent>
     <otel.agent.dir>target/server/otel</otel.agent.dir>
-    <otel.agent.file>${otel.agent.dir}/opentelemetry-javaagent.jar</otel.agent.file>
+    <otel.agent.file>opentelemetry-javaagent.jar</otel.agent.file>
+
+    <!-- Cryostat Java Agent -->
+    <version.cryostat.javaagent>0.6.1</version.cryostat.javaagent>
+    <cryostat.agent.dir>target/server/cryostat</cryostat.agent.dir>
+    <cryostat.agent.file>cryostat-javaagent-shaded.jar</cryostat.agent.file>
 
     <!-- Etc -->
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -89,6 +94,33 @@
                 <goals>
                   <goal>package</goal>
                 </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-dependency-plugin</artifactId>
+            <version>3.8.1</version>
+            <executions>
+              <execution>
+                <id>copy-cryostat-javaagent</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>copy</goal>
+                </goals>
+                <configuration>
+                  <artifactItems>
+                    <artifactItem>
+                      <groupId>io.cryostat</groupId>
+                      <artifactId>cryostat-agent</artifactId>
+                      <version>${version.cryostat.javaagent}</version>
+                      <classifier>shaded</classifier>
+                      <outputDirectory>${cryostat.agent.dir}</outputDirectory>
+                      <destFileName>${cryostat.agent.file}</destFileName>
+                    </artifactItem>
+                  </artifactItems>
+                  <stripVersion>true</stripVersion>
+                </configuration>
               </execution>
             </executions>
           </plugin>
@@ -182,7 +214,34 @@
                       <version>${version.opentelemetry.javaagent}</version>
                       <type>jar</type>
                       <outputDirectory>${otel.agent.dir}</outputDirectory>
-                      <destFileName>opentelemetry-javaagent.jar</destFileName>
+                      <destFileName>${otel.agent.file}</destFileName>
+                    </artifactItem>
+                  </artifactItems>
+                  <stripVersion>true</stripVersion>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-dependency-plugin</artifactId>
+            <version>3.8.1</version>
+            <executions>
+              <execution>
+                <id>copy-cryostat-javaagent</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>copy</goal>
+                </goals>
+                <configuration>
+                  <artifactItems>
+                    <artifactItem>
+                      <groupId>io.cryostat</groupId>
+                      <artifactId>cryostat-agent</artifactId>
+                      <version>${version.cryostat.javaagent}</version>
+                      <classifier>shaded</classifier>
+                      <outputDirectory>${cryostat.agent.dir}</outputDirectory>
+                      <destFileName>${cryostat.agent.file}</destFileName>
                     </artifactItem>
                   </artifactItems>
                   <stripVersion>true</stripVersion>
