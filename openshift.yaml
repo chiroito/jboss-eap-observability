@@ -1,0 +1,389 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hello-app
+
+
+# *********************************************************************************
+# ビルド
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: hello-app
+  namespace: hello-app
+---
+kind: BuildConfig
+apiVersion: build.openshift.io/v1
+metadata:
+  name: hello-app-build
+  namespace: hello-app
+spec:
+  output:
+    to:
+      kind: ImageStreamTag
+      name: hello-app:latest
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Containerfile
+  source:
+    type: Git
+    git:
+      uri: https://github.com/chiroito/jboss-eap-observability
+
+
+# *********************************************************************************
+### トレーシング
+# 先に Instrumentation を作らないといけない
+---
+apiVersion: tempo.grafana.com/v1alpha1
+kind: TempoMonolithic
+metadata:
+  name: hello-tempo-monolithic
+  namespace: hello-app
+spec:
+  ingestion:
+    otlp:
+      grpc:
+        enabled: true
+      http:
+        enabled: true
+  resources:
+    limits:
+      cpu: '1'
+      memory: 1Gi
+  jaegerui:
+    resources:
+      limits:
+        cpu: '1'
+        memory: 1Gi
+    route:
+      enabled: true
+      termination: insecure
+    enabled: true
+  storage:
+    traces:
+      backend: memory
+---
+apiVersion: opentelemetry.io/v1alpha1
+kind: Instrumentation
+metadata:
+  name: hello-app-instrumentation
+  namespace: hello-app
+spec:
+  env:
+    - name: OTEL_SERVICE_NAME
+      value: hello-app
+  exporter:
+    endpoint: 'http://otel-collector.hello-app.svc.cluster.local:4317'
+
+# *********************************************************************************
+# アプリ
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: hello-app
+  name: hello-app
+  labels:
+    app: hello-app
+  annotations:
+    image.openshift.io/triggers: >-
+      [{"from":{"kind":"ImageStreamTag","name":"hello-app:latest","namespace":"hello-app"},"fieldPath":"spec.template.spec.containers[?(@.name==\"container\")].image","paused":true}]
+spec:
+  selector:
+    matchLabels:
+      app: hello-app
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: hello-app
+        app.kubernetes.io/name: hello-app
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /metrics
+        prometheus.io/port: "9990"
+        instrumentation.opentelemetry.io/inject-java: "true"
+        sidecar.opentelemetry.io/inject: "true"
+    spec:
+      containers:
+        - name: container
+          image: >-
+            image-registry.openshift-image-registry.svc:5000/hello-app/hello-app
+          ports:
+            - name: web
+              containerPort: 8080
+              protocol: TCP
+            - name: management
+              containerPort: 9990
+              protocol: TCP
+            - name: cryostat
+              containerPort: 9977
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 9990
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 9990
+          startupProbe:
+            httpGet:
+              path: /health/started
+              port: 9990
+          env:
+            - name: JAVA_OPTS
+              value: -Xlog:gc*:stdout:time,uptimemillis,level
+            - name: MODULE_OPTS
+              value: -javaagent:/opt/server/cryostat/cryostat-javaagent-shaded.jar
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: CRYOSTAT_AGENT_BASEURI
+              value: "https://cryostat-sample-agent.hello-app.svc:8282"
+            - name: CRYOSTAT_AGENT_CALLBACK
+              value: "https://$(POD_IP):9977"
+            - name: CRYOSTAT_AGENT_AUTHORIZATION_TYPE
+              value: "kubernetes"
+            - name: CRYOSTAT_AGENT_AUTHORIZATION_VALUE
+              value: "/var/run/secrets/kubernetes.io/serviceaccount/token"
+            - name: CRYOSTAT_AGENT_API_WRITES_ENABLED
+              value: "true"
+            - name: CRYOSTAT_AGENT_WEBCLIENT_TLS_REQUIRED
+              value: "false"
+            - name: CRYOSTAT_AGENT_REGISTRATION_JMX_IGNORE
+              value: "true"
+      imagePullSecrets: []
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+  paused: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-app
+  namespace: hello-app
+  labels:
+    app: hello-app
+spec:
+  selector:
+    app: hello-app
+  ports:
+    - protocol: TCP
+      name: web
+      port: 8080
+      targetPort: 8080
+    - protocol: TCP
+      name: management
+      port: 9990
+      targetPort: 9990
+    - protocol: TCP
+      name: cryostat
+      port: 9977
+      targetPort: 9977
+---
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: hello-app-http
+  namespace: hello-app
+  annotations:
+    openshift.io/host.generated: 'true'
+spec:
+  path: /
+  to:
+    kind: Service
+    name: hello-app
+    weight: 100
+  port:
+    targetPort: web
+  wildcardPolicy: None
+---
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: hello-app-admin
+  namespace: hello-app
+  annotations:
+    openshift.io/host.generated: 'true'
+spec:
+  path: /
+  to:
+    kind: Service
+    name: hello-app
+    weight: 100
+  port:
+    targetPort: management
+  wildcardPolicy: None
+# Wildfly Operator
+---
+#apiVersion: wildfly.org/v1alpha1
+#kind: WildFlyServer
+#metadata:
+#  name: hello-app
+#  namespace: hello-app
+#  annotations:
+#    sidecar.opentelemetry.io/inject: 'true'
+#  labels:
+#    app: jboss-eap-app
+#    cryostat.io/name: cryostat-sample
+#    cryostat.io/namespace: hello-app
+#spec:
+#  applicationImage: 'image-registry.openshift-image-registry.svc:5000/hello-app/jboss-eap-app'
+#  replicas: 1
+#  livenessProbe:
+#    httpGet:
+#      path: /health/live
+#      port: 9990
+#  readinessProbe:
+#    httpGet:
+#      path: /health/ready
+#      port: 9990
+#  startupProbe:
+#    httpGet:
+#      path: /health/started
+#      port: 9990
+#  env:
+#    - name: OTEL_EXPORTER_OTLP_ENDPOINT
+#      value: "http://otel-collector:4318"
+#    - name: OTEL_SERVICE_NAME
+#      value: "hello-jakarta-service"
+#    - name: JAVA_OPTS_APPEND
+#      value: "-javaagent:/opt/server/otel/opentelemetry-javaagent.jar"
+
+
+# *********************************************************************************
+# OTel Collector
+---
+kind: OpenTelemetryCollector
+apiVersion: opentelemetry.io/v1beta1
+metadata:
+  name: otel
+  namespace: hello-app
+spec:
+  mode: deployment
+  config:
+    exporters:
+      debug: {}
+      otlp/tempo:
+        endpoint: 'tempo-hello-tempo-monolithic.hello-app.svc.cluster.local:4317'
+        tls:
+          insecure: true
+    processors:
+      batch: {}
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: 256
+        spike_limit_mib: 64
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    service:
+      pipelines:
+        traces:
+          exporters:
+            - otlp/tempo
+          processors:
+            - batch
+          receivers:
+            - otlp
+
+# *********************************************************************************
+# メトリクス
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: hello-app
+  namespace: hello-app
+  labels:
+    app.kubernetes.io/name: hello-app
+spec:
+  namespaceSelector:
+    matchNames:
+      - hello-app
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: hello-app
+  podMetricsEndpoints:
+    - port: management
+      path: /metrics
+      scheme: http
+      interval: 15s
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-monitoring-config
+  namespace: openshift-monitoring
+data:
+  config.yaml: |
+    enableUserWorkload: true
+# 開発者ダッシュボードには出ない（なぜ？
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hello-app
+  namespace: openshift-config-managed
+  labels:
+    console.openshift.io/dashboard: "true" # このラベルが重要
+data:
+  hello-app-metrics.json: |
+    {
+      "title": "Hello App 運用ダッシュボード",
+      "panels": [
+        {
+          "title": "HTTP リクエスト数",
+          "type": "graph",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "targets": [
+            { "expr": "jboss_undertow_request_count_total" }
+          ]
+        },
+        {
+          "title": "JVM GC時間",
+          "type": "graph",
+          "format": "time_series",
+          "intervalFactor": 1,
+          "legendFormat": "",
+          "refId": "C",
+          "targets": [
+            { "expr": "base_gc_time_total_seconds" }
+          ]
+        },
+        {
+          "title": "JVM GC回数",
+          "type": "graph",
+          "targets": [
+            { "expr": "base_gc_total" }
+          ]
+        }
+      ]
+    }   
+
+---
+
+
+
+# *********************************************************************************
+# JFR
+apiVersion: operator.cryostat.io/v1beta2
+kind: Cryostat
+metadata:
+  name: cryostat-sample
+  namespace: hello-app
+spec:
+  enableCertManager: false
