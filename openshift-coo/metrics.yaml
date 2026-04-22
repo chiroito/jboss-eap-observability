@@ -1,5 +1,3 @@
-# Cluster Observability Operator メトリクス収集
----
 apiVersion: monitoring.rhobs/v1alpha1
 kind: MonitoringStack
 metadata:
@@ -12,13 +10,13 @@ spec:
       - observability-coo-demo
   resourceSelector:
     matchLabels:
-      my-monitoring-stack: hello-app
+      my-monitoring-stack: my-monitoring-stack
   prometheusConfig:
     replicas: 1
   alertmanagerConfig:
-    disabled: false
     replicas: 1
 ---
+
 
 apiVersion: monitoring.rhobs/v1
 kind: ServiceMonitor
@@ -27,7 +25,7 @@ metadata:
   namespace: observability-coo-demo
   labels:
     app.kubernetes.io/part-of: hello-app-monitoring
-    my-monitoring-stack: hello-app
+    my-monitoring-stack: my-monitoring-stack
 spec:
   selector:
     matchLabels:
@@ -38,6 +36,7 @@ spec:
       interval: 15s
   fallbackScrapeProtocol: PrometheusText0.0.4
 ---
+
 
 apiVersion: perses.dev/v1alpha2
 kind: PersesDatasource
@@ -56,12 +55,9 @@ spec:
           kind: HTTPProxy
           spec:
             url: 'http://my-monitoring-stack-prometheus.observability-coo-demo.svc.cluster.local:9090'
-
-# JBoss EAP 8.1 では /metrics へのアクセス時に空のContent-Typeを出力するため Prometheus が読み込みに失敗する。
-# そのため、fallbackScrapeProtocol: PrometheusText0.0.4を設定する必要がある。
-# エラーログは prometheus-my-monitoring-stack-0 という Pod に出力される
-
 ---
+
+
 apiVersion: perses.dev/v1alpha2
 kind: PersesDashboard
 metadata:
@@ -117,21 +113,6 @@ spec:
                 $ref: "#/spec/panels/1_2"
           repeatVariable: ""
     panels:
-      '1_0':
-        kind: Panel
-        spec:
-          display:
-            name: Loaded Class Count
-          plugin:
-            kind: TimeSeriesChart
-            spec: {}
-          queries:
-            - kind: TimeSeriesQuery
-              spec:
-                plugin:
-                  kind: PrometheusTimeSeriesQuery
-                  spec:
-                    query: base_classloader_loadedClasses_count
       '0_0':
         kind: Panel
         spec:
@@ -162,6 +143,21 @@ spec:
                   kind: PrometheusTimeSeriesQuery
                   spec:
                     query: jboss_undertow_active_sessions
+      '1_0':
+        kind: Panel
+        spec:
+          display:
+            name: Loaded Class Count
+          plugin:
+            kind: TimeSeriesChart
+            spec: {}
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    query: base_classloader_loadedClasses_count
       '1_1':
         kind: Panel
         spec:

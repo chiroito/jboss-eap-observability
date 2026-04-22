@@ -1,0 +1,189 @@
+apiVersion: grafana.integreatly.org/v1beta1
+kind: Grafana
+metadata:
+  name: my-grafana
+  labels:
+    dashboards: my-grafana
+  namespace: observability-demo
+spec:
+  config:
+    log:
+      mode: console
+      level: warn
+    security:
+      admin_user: admin
+      admin_password: admin
+    auth:
+      disable_login_form: 'true'
+      disable_signout_menu: 'true'
+    auth.anonymous:
+      enabled: 'true'
+      org_role: Admin
+  deployment:
+    spec:
+      template:
+        spec:
+          containers:
+            - ports:
+                - protocol: TCP
+                  name: grafana-http
+                  containerPort: 3000
+              name: grafana
+  route:
+    spec:
+      tls:
+        termination: edge
+      to:
+        weight: 100
+        name: my-grafana-service
+        kind: Service
+---
+
+
+# for Log
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: my-loki-reader
+  namespace: observability-demo
+---
+
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-loki-reader-token
+  namespace: observability-demo
+  annotations:
+    kubernetes.io/service-account.name: my-loki-reader
+type: kubernetes.io/service-account-token
+---
+
+
+#デモなので管理者権限とする
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: my-loki-reader-bind-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: my-loki-reader
+    namespace: observability-demo
+---
+
+
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDatasource
+metadata:
+  name: my-loki-datasource
+  namespace: observability-demo
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: my-grafana
+  valuesFrom:
+    - targetPath: "secureJsonData.httpHeaderValue1"
+      valueFrom:
+        secretKeyRef:
+          name: my-loki-reader-token
+          key: token
+  datasource:
+    name: my-loki-application
+    type: loki
+    access: proxy
+    url: https://my-logging-loki-gateway-http.openshift-logging.svc:8080/api/logs/v1/application/
+    jsonData:
+      httpMethod: GET
+      timeInterval: 5s
+      tlsSkipVerify: true
+      httpHeaderName1: Authorization
+      httpHeaderName2: X-Scope-OrgID
+    secureJsonData:
+      httpHeaderValue1: "Bearer ${token}"
+      httpHeaderValue2: "application"
+---
+
+# for Tracing
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDatasource
+metadata:
+  name: my-tempo-datasource
+  namespace: observability-demo
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: my-grafana
+  datasource:
+    name: my-tempo
+    type: tempo
+    access: proxy
+    url: http://tempo-hello-tempo-monolithic.observability-demo.svc.cluster.local:3200
+---
+
+# for Metrics
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: my-prometheus-reader
+  namespace: observability-demo
+---
+
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: my-prometheus-reader-bind-monitoring-view
+subjects:
+  - kind: ServiceAccount
+    name: my-prometheus-reader
+    namespace: observability-demo
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-monitoring-view
+---
+
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-prometheus-reader-token
+  namespace: observability-demo
+  annotations:
+    kubernetes.io/service-account.name: my-prometheus-reader
+type: kubernetes.io/service-account-token
+---
+
+
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDatasource
+metadata:
+  name: my-prometheus-datasource
+  namespace: observability-demo
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: my-grafana
+  valuesFrom:
+    - targetPath: "secureJsonData.httpHeaderValue1"
+      valueFrom:
+        secretKeyRef:
+          name: my-prometheus-reader-token
+          key: token
+  datasource:
+    name: my-prometheus-datasource
+    type: prometheus
+    access: proxy
+    url: https://thanos-querier.openshift-monitoring.svc:9091
+    jsonData:
+      httpHeaderName1: Authorization
+      tlsSkipVerify: true
+      httpMethod: POST
+      timeInterval: 15s
+    secureJsonData:
+      httpHeaderValue1: "Bearer ${token}"
+---

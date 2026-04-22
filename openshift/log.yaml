@@ -1,0 +1,109 @@
+apiVersion: loki.grafana.com/v1
+kind: LokiStack
+metadata:
+  name: my-logging-loki
+  namespace: openshift-logging
+spec:
+  managementState: Managed
+  size: 1x.demo
+  storageClassName: hostpath-csi
+  storage:
+    schemas:
+      - effectiveDate: "2026-04-01"
+        version: v13
+    secret:
+      name: my-minio-secret
+      type: s3
+  tenants:
+    mode: openshift-logging
+  limits:
+    global:
+      retention:
+        days: 1
+---
+
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: my-log-collector-sa
+  namespace: openshift-logging
+---
+
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: my-collect-app-logs-bind
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: collect-application-logs
+subjects:
+  - kind: ServiceAccount
+    name: my-log-collector-sa
+    namespace: openshift-logging
+---
+
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: my-write-logs-bind
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: logging-collector-logs-writer
+subjects:
+  - kind: ServiceAccount
+    name: my-log-collector-sa
+    namespace: openshift-logging
+---
+
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-log-ca
+  namespace: openshift-logging
+  annotations:
+    service.beta.openshift.io/inject-cabundle: "true"
+---
+
+
+apiVersion: observability.openshift.io/v1
+kind: ClusterLogForwarder
+metadata:
+  name: my-log-forwarder
+  namespace: openshift-logging
+spec:
+  managementState: Managed
+  serviceAccount:
+    name: my-log-collector-sa
+  inputs:
+    - name: my-hello-app-logs
+      type: application
+      application:
+        includes:
+          - namespace: observability-demo
+  outputs:
+    - name: my-lokistack-out
+      type: lokiStack
+      lokiStack:
+        target:
+          name: my-logging-loki
+          namespace: openshift-logging
+        authentication:
+          token:
+            from: serviceAccount
+      tls:
+        ca:
+          configMapName: my-log-ca
+          key: service-ca.crt
+  pipelines:
+    - name: my-app-to-loki
+      inputRefs:
+        - my-hello-app-logs
+      outputRefs:
+        - my-lokistack-out
+---

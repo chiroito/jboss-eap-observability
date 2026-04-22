@@ -1,0 +1,12 @@
+# JFR
+apiVersion: operator.cryostat.io/v1beta2
+kind: Cryostat
+metadata:
+  name: my-cryostat
+  namespace: observability-coo-demo
+spec:
+  enableCertManager: false
+  agentOptions:
+    allowInsecure: true
+    disableHostnameVerification: true
+---

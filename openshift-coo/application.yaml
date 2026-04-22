@@ -1,0 +1,159 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: observability-coo-demo
+---
+
+
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: hello-app-image
+  namespace: observability-coo-demo
+---
+
+
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: hello-app-build-config
+  namespace: observability-coo-demo
+spec:
+  output:
+    to:
+      kind: ImageStreamTag
+      name: hello-app-image:latest
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Containerfile
+  source:
+    type: Git
+    git:
+      uri: https://github.com/chiroito/jboss-eap-observability
+---
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: observability-coo-demo
+  name: hello-app
+  labels:
+    app: hello-app
+  annotations:
+    image.openshift.io/triggers: >-
+      [{"from":{"kind":"ImageStreamTag","name":"hello-app-image:latest","namespace":"observability-coo-demo"},"fieldPath":"spec.template.spec.containers[?(@.name==\"container\")].image","paused":true}]
+spec:
+  selector:
+    matchLabels:
+      app: hello-app
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: hello-app
+        app.kubernetes.io/name: hello-app
+        # for Cryostat
+        cryostat.io/name: my-cryostat
+        cryostat.io/namespace: observability-coo-demo
+        cryostat.io/java-options-var: MODULE_OPTS
+      annotations:
+        # for Metrics
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /metrics
+        prometheus.io/port: "9990"
+        # for Tracing
+        instrumentation.opentelemetry.io/inject-java: "true"
+        sidecar.opentelemetry.io/inject: "true"
+    spec:
+      containers:
+        - name: container
+          image: >-
+            image-registry.openshift-image-registry.svc:5000/observability-coo-demo/hello-app-image
+          ports:
+            - name: web
+              containerPort: 8080
+              protocol: TCP
+            - name: management
+              # for Metrics
+              containerPort: 9990
+              protocol: TCP
+            - name: cryostat
+              # for Cryostat
+              containerPort: 9977
+              protocol: TCP
+          livenessProbe:
+            # for HealthCheck
+            httpGet:
+              path: /health/live
+              port: 9990
+          readinessProbe:
+            # for HealthCheck
+            httpGet:
+              path: /health/ready
+              port: 9990
+          startupProbe:
+            # for HealthCheck
+            httpGet:
+              path: /health/started
+              port: 9990
+          env:
+            - name: JAVA_OPTS
+              # for Log and Metrics
+              value: '-Xlog:gc*:stdout:time,uptimemillis,level -Djboss.bind.address.management=0.0.0.0'
+      imagePullSecrets: []
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+  paused: false
+---
+
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-app-service
+  namespace: observability-coo-demo
+  labels:
+    app: hello-app
+spec:
+  selector:
+    app: hello-app
+  ports:
+    - protocol: TCP
+      name: web
+      port: 8080
+      targetPort: 8080
+    - protocol: TCP
+      # for Metrics
+      name: management
+      port: 9990
+      targetPort: 9990
+    - protocol: TCP
+      # for Cryostat
+      name: cryostat
+      port: 9977
+      targetPort: 9977
+---
+
+
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: hello-app-route
+  namespace: observability-coo-demo
+spec:
+  path: /
+  to:
+    kind: Service
+    name: hello-app-service
+    weight: 100
+  port:
+    targetPort: web
+  tls:
+    termination: edge
+  wildcardPolicy: None
+---

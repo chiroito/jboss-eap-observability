@@ -1,0 +1,81 @@
+apiVersion: tempo.grafana.com/v1alpha1
+kind: TempoMonolithic
+metadata:
+  name: hello-tempo-monolithic
+  namespace: observability-demo
+spec:
+  ingestion:
+    otlp:
+      grpc:
+        enabled: true
+      http:
+        enabled: true
+  resources:
+    limits:
+      cpu: '1'
+      memory: 1Gi
+  jaegerui:
+    resources:
+      limits:
+        cpu: '1'
+        memory: 1Gi
+    route:
+      enabled: true
+      termination: insecure
+    enabled: true
+  storage:
+    traces:
+      backend: memory
+---
+
+
+apiVersion: opentelemetry.io/v1alpha1
+kind: Instrumentation
+metadata:
+  name: my-otel-instrumentation
+  namespace: observability-demo
+spec:
+  env:
+    - name: OTEL_SERVICE_NAME
+      value: hello-app
+  exporter:
+    endpoint: 'http://my-otel-collector.observability-demo.svc.cluster.local:4317'
+---
+
+
+kind: OpenTelemetryCollector
+apiVersion: opentelemetry.io/v1beta1
+metadata:
+  name: my-otel
+  namespace: observability-demo
+spec:
+  mode: deployment
+  config:
+    exporters:
+      debug: {}
+      otlp/tempo:
+        endpoint: 'tempo-hello-tempo-monolithic.observability-demo.svc.cluster.local:4317'
+        tls:
+          insecure: true
+    processors:
+      batch: {}
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: 256
+        spike_limit_mib: 64
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: '0.0.0.0:4317'
+          http:
+            endpoint: '0.0.0.0:4318'
+    service:
+      pipelines:
+        traces:
+          exporters:
+            - otlp/tempo
+          processors:
+            - batch
+          receivers:
+            - otlp

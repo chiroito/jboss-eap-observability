@@ -1,0 +1,147 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: observability-demo-minio
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-minio-secret
+  namespace: observability-demo-minio
+type: Opaque
+stringData:
+  rootUser: minio
+  rootPassword: minio123456
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: my-minio-pvc
+  namespace: observability-demo-minio
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-minio
+  namespace: observability-demo-minio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-minio
+  template:
+    metadata:
+      labels:
+        app: my-minio
+    spec:
+      containers:
+        - name: minio
+          image: quay.io/minio/minio:latest
+          args:
+            - server
+            - /data
+            - --console-address
+            - ":9001"
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: my-minio-secret
+                  key: rootUser
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: my-minio-secret
+                  key: rootPassword
+          ports:
+            - name: api
+              containerPort: 9000
+            - name: console
+              containerPort: 9001
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: my-minio-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-minio
+  namespace: observability-demo-minio
+spec:
+  selector:
+    app: my-minio
+  ports:
+    - name: api
+      port: 9000
+      targetPort: api
+    - name: console
+      port: 9001
+      targetPort: console
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: my-minio-init
+  namespace: observability-demo-minio
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mc
+          image: quay.io/minio/mc:latest
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: my-minio-secret
+                  key: rootUser
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: my-minio-secret
+                  key: rootPassword
+            - name: MC_CONFIG_DIR
+              value: /tmp/.mc
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+              export MC_HOST_local="http://${MINIO_ROOT_USER}:${MINIO_ROOT_PASSWORD}@my-minio.observability-demo-minio.svc:9000"
+              until mc ls local >/dev/null 2>&1; do
+                sleep 2
+              done
+              mc mb -p local/my-loki || true
+
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-minio-coo-secret
+  namespace: openshift-logging
+type: Opaque
+stringData:
+  bucketnames: my-loki-coo
+  endpoint: http://my-minio.observability-demo-minio.svc:9000
+  access_key_id: minio
+  access_key_secret: minio123456
+  forcepathstyle: "true"
+---

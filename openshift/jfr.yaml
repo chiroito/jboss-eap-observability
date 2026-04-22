@@ -1,0 +1,11 @@
+apiVersion: operator.cryostat.io/v1beta2
+kind: Cryostat
+metadata:
+  name: my-cryostat
+  namespace: observability-demo
+spec:
+  enableCertManager: false
+  agentOptions:
+    allowInsecure: true
+    disableHostnameVerification: true
+---
