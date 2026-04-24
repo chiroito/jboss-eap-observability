@@ -1,18 +1,43 @@
 # JBoss EAP Observability Demo
 
-このデモは、JBoss EAP 8.1 を使って Observability を確認するためのサンプルです。  
-JBoss EAP 単体の構成と、JBoss EAP 8.1 に XP 6.0 を組み合わせた構成の両方を用意しています。
+このデモは、JBoss EAP 8.1 を使って Observability をデモするためのサンプルです。  
+
+以下の2つ構成を用意しています。
+
+- JBoss EAP 単体の構成
+- JBoss EAP 8.1 + XP 6.0 
 
 JBoss EAP 単体の構成では、アプリケーションサーバが標準で提供する Observability 情報を確認できます。  
-JBoss EAP 8.1 + XP 6.0 の構成では、それに加えて、アプリケーション開発者がメトリクスやスパンを追加した場合の動作も確認できます。
+JBoss EAP 8.1 + XP 6.0 の構成では、単体の構成に加えて、アプリケーション開発者がメトリクスやスパンを追加した場合の動作も確認できます。
 
-このデモは、ローカル環境では Podman Compose を使って起動でき、OpenShift へデプロイして実行することもできます。
+このデモは、以下の環境にデプロイできます。
+- Podman Compose
+- OpenShift Container Platform (以下 OpenShift)
+- OpenShift Container Platform + Cluster Observability Operator　(以下 COO)
 
+Podman Composeは、JBoss EAP単体と、XPを含んだ構成をデプロイできます。
+OpenShiftは、JBoss EAP単体のみをデプロイできます。
+
+OpenShiftは、4.21で動作を確認しています。
+
+## UI
+UIの違い
+- Podman Compose版とOpenShift版は、UI に Grafana を使っています。
+- COO版は、UI に Cluster Observability Operator を使っています。
+
+### GrafanaのUI
 
 <img src="img/trace.png" width="600">
 <img src="img/log.png" width="600">
 <img src="img/metrics.png" width="600">
 <img src="img/profiling.png" width="600">
+
+### COOのUI
+
+<img src="img/coo_trace.png" width="600">
+<img src="img/coo_log.png" width="600">
+<img src="img/coo_metrics.png" width="600">
+<img src="img/coo_profiling.png" width="600">
 
 ## 想定している使い方
 
@@ -23,8 +48,14 @@ JBoss EAP 8.1 + XP 6.0 の構成では、それに加えて、アプリケーシ
 * アプリケーションサーバが提供する情報と、アプリケーション開発者が追加する情報の違いを確認する
 * Podman Compose 上で手元ですばやく動作確認する
 * OpenShift 上で動作確認する
+* OpenShift の Cluster Observability Operatorで動作確認する
 
 ## このデモで確認できること
+
+アプリケーションは、REST APIとリンク集を提供しています。
+リンク集から、各種Observabilityのツールへアクセスできます。
+アプリケションをデプロイ後は、そのアプリケーションのホストへアクセスしてください。
+トップページがリンク集になっています。
 
 このデモでは、以下の Observability 機能を扱います。
 
@@ -45,14 +76,16 @@ JBoss EAP 8.1 + XP 6.0 の構成では、それに加えて、アプリケーシ
 
 - **Tracing**  
   OpenTelemetry を利用します。  
-  JBoss EAP 単体の構成では Java Agent として OpenTelemetry を追加します。  
+  JBoss EAP 単体の構成では Java Agent として OpenTelemetry をサーバに追加します。  
   JBoss EAP 8.1 + XP 6.0 の構成では、XP が提供する機能を利用します。
+  OpenShiftの構成では、OTel Instrumentationを利用します。
 
 - **Log**  
   Unified JVM Logging により GC ログを取得します。
 
 - **Profiling**  
   JDK Flight Recorder を利用します。
+  OpenShiftの構成では、Cryostat Agentを利用します。
 
 ## 構成の違い
 
@@ -69,7 +102,8 @@ JBoss EAP 8.1 + XP 6.0 の構成では、それに加えて、アプリケーシ
 このデモは、以下の方法で実行できます。
 
 - Podman Compose
-- OpenShift
+- OpenShift Container Platform
+- OpenShift Container Platform Plus 
 
 ## Podman Compose で実行する
 
@@ -103,17 +137,31 @@ podman compose -f docker-compose-xp.yaml down
 
 ## アクセス先
 
-Podman Compose でデプロイした場合、アプリケーションには以下の URL でアクセスできます。
+Podman Compose でデプロイした場合、アプリケーションには以下の URL でリンク集へアクセスできます。
 
 * [http://localhost:8080](http://localhost:8080)
 
-## OpenShift で実行する（未実装）
+## OpenShift で実行する
 
-このデモは OpenShift にデプロイして実行することもできます。
-OpenShift 環境では、Route や公開 URL は環境に応じて異なります。
-具体的なデプロイ手順やアクセス方法は、OpenShift 向けのマニフェストや手順書を参照してください。
+このデモは OpenShift にデプロイして実行できます。
+OpenShift Container Platform版は、UIに Grafana を使用します。
+Cluster Observability Operator (COO) 版は、UIに COO を使用します。
 
+デプロイには`oc`コマンドが必要です。
 
+OpenShift Container Platform版は以下のようにインストールします。
+```shell
+./prepDemo.sh
+./installOpenshiftDemo.sh
+```
+
+Cluster Observability Operator (COO) 版は以下のようにインストールします。
+```shell
+./prepDemo.sh
+./installCooDemo.sh
+```
+
+アプリケーションのRouteである`hello-app-route`へアクセスするとリンク集へアクセスできます。
 
 ## 補足
 
