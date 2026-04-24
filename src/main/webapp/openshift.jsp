@@ -19,7 +19,7 @@
         <a href='https://my-grafana-route-observability-demo.${domain}/a/grafana-exploretraces-app/explore?actionView=traceList'>Tracing (Grafana + Tempo)</a>
     </li>
     <li>
-        <a href="https://my-grafana-route-observability-demo.${domain}/a/grafana-lokiexplore-app/explore/service/hello-app/logs?var-filters=service_name%7C%3D%7Chello-app">Log (Grafana + Loki)</a>
+        <a href="https://my-grafana-route-observability-demo.${domain}//a/grafana-lokiexplore-app/explore/kubernetes_namespace_name/observability-demo/logs?var-filters=kubernetes_namespace_name%7C%3D%7Cobservability-demo&from=now-15m&to=now">Log (Grafana + Loki)</a>
     </li>
     <li><a href="https://my-cryostat-observability-demo.${domain}">JFR</a></li>
 </ul>
