@@ -135,11 +135,11 @@ spec:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: my-minio-coo-secret
+  name: my-minio-secret
   namespace: openshift-logging
 type: Opaque
 stringData:
-  bucketnames: my-loki-coo
+  bucketnames: my-loki
   endpoint: http://my-minio.observability-demo-minio.svc:9000
   access_key_id: minio
   access_key_secret: minio123456

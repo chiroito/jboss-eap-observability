@@ -1,0 +1,117 @@
+# 参考情報
+
+# Wildfly Operator
+#apiVersion: wildfly.org/v1alpha1
+#kind: WildFlyServer
+#metadata:
+#  name: hello-app
+#  namespace: observability-demo
+#  annotations:
+#    sidecar.opentelemetry.io/inject: 'true'
+#  labels:
+#    app: jboss-eap-app
+#    cryostat.io/name: cryostat-sample
+#    cryostat.io/namespace: observability-demo
+#spec:
+#  applicationImage: 'image-registry.openshift-image-registry.svc:5000/hello-app/jboss-eap-app'
+#  replicas: 1
+#  livenessProbe:
+#    httpGet:
+#      path: /health/live
+#      port: 9990
+#  readinessProbe:
+#    httpGet:
+#      path: /health/ready
+#      port: 9990
+#  startupProbe:
+#    httpGet:
+#      path: /health/started
+#      port: 9990
+#  env:
+#    - name: OTEL_EXPORTER_OTLP_ENDPOINT
+#      value: "http://otel-collector:4318"
+#    - name: OTEL_SERVICE_NAME
+#      value: "hello-jakarta-service"
+#    - name: JAVA_OPTS_APPEND
+#      value: "-javaagent:/opt/server/otel/opentelemetry-javaagent.jar"
+#---
+
+# GrafanaからLokiを見るときの権限
+#apiVersion: rbac.authorization.k8s.io/v1
+#kind: ClusterRoleBinding
+#metadata:
+#  name: my-grafana-read-application-logs
+#roleRef:
+#  apiGroup: rbac.authorization.k8s.io
+#  kind: ClusterRole
+#  name: cluster-logging-application-view
+#subjects:
+#  - kind: ServiceAccount
+#    name: my-loki-reader
+#    namespace: observability-demo
+#---
+#apiVersion: rbac.authorization.k8s.io/v1
+#kind: ClusterRole
+#metadata:
+#  name: my-grafana-pods-log-reader
+#rules:
+#  - apiGroups: [""]
+#    resources:
+#      - pods
+#      - pods/log
+#      - namespaces
+#    verbs:
+#      - get
+#      - list
+#      - watch
+#---
+#apiVersion: rbac.authorization.k8s.io/v1
+#kind: ClusterRoleBinding
+#metadata:
+#  name: my-grafana-pods-log-reader
+#roleRef:
+#  apiGroup: rbac.authorization.k8s.io
+#  kind: ClusterRole
+#  name: my-grafana-pods-log-reader
+#subjects:
+#  - kind: ServiceAccount
+#    name: my-loki-reader
+#    namespace: observability-demo
+#---
+
+
+# モニタリング
+---
+#apiVersion: monitoring.coreos.com/v1
+#kind: PodMonitor
+#metadata:
+#  name: hello-app
+#  namespace: observability-demo
+#  labels:
+#    app.kubernetes.io/name: hello-app
+#spec:
+#  namespaceSelector:
+#    matchNames:
+#      - hello-app
+#  selector:
+#    matchLabels:
+#      app.kubernetes.io/name: hello-app
+#  podMetricsEndpoints:
+#    - port: management
+#      path: /metrics
+#      scheme: http
+#      interval: 15s
+#---
+#apiVersion: monitoring.coreos.com/v1
+#kind: ServiceMonitor
+#metadata:
+#  name: hello-app
+#  namespace: hello-app
+#spec:
+#  endpoints:
+#    - interval: 15s
+#      port: management
+#      scheme: http
+#  selector:
+#    matchLabels:
+#      app: hello-app
