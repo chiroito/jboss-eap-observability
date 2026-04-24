@@ -5,22 +5,12 @@
     <title>JBoss EAP Observability Demo</title>
 </head>
 <body>
-<h2>JBoss EAP Observability Demo</h2>
-<h3>Demo Application</h3>
+<h2>JBoss EAP Observability Demo Top Page</h2>
 <ul>
-    <li><a href="/api/hello">Hello API — Traced by the application server</a></li>
-    <li><a href="/api/helloxp">Hello API + custom telemetry (w/ XP) — Traced by the application server, with additional custom metrics and spans</a></li>
-</ul>
-<h3>Observability</h3>
-<ul>
-    <li><a href="http://localhost:9990/health">Health Check (JBoss EAP)</a></li>
-    <li><a href="http://localhost:9990/metrics">Metrics (JBoss EAP)</a></li>
-    <li><a href="http://localhost:3000/a/grafana-metricsdrilldown-app/drilldown">Metrics (Grafana + Prometheus)</a></li>
-    <li><a href="http://localhost:9090">Metrics (Prometheus)</a></li>
-    <li><a href="http://localhost:3000/a/grafana-exploretraces-app/explore?actionView=traceList">Tracing (Grafana + Tempo)</a></li>
-    <li><a href="http://localhost:3000/a/grafana-lokiexplore-app/explore/service/hello-app/logs?var-filters=service_name%7C%3D%7Chello-app">Log (Grafana + Loki)</a></li>
-    <li><a href="http://localhost:16686/search">Tracing (Jaeger)</a></li>
-    <li>Please connect to service:jmx:remote+http://localhost:9990 using JDK Mission Control to dump the JFR recording.</li>
+    <li><a href="/podman_eap">Link for JBoss EAP on Podman Compose</a></li>
+    <li><a href="">Link for JBoss EAP XP on Podman Compose</a></li>
+    <li><a href="/openshift?mode=openshift">Link for JBoss EAP on Openshift</a></li>
+    <li><a href="/openshift?mode=coo">Link for JBoss EAP on Openshift w/ Cluster Observability Operator</a></li>
 </ul>
 </body>
 </html>

@@ -14,6 +14,7 @@
     <maven.compiler.target>17</maven.compiler.target>
     <maven.compiler.source>17</maven.compiler.source>
     <version.jakarta.ee>10.0.0</version.jakarta.ee>
+    <jakarta.mvc-api.version>3.0.0</jakarta.mvc-api.version>
 
     <!-- JBoss EAP -->
     <version.bom>8.1.2.GA-redhat-00004</version.bom>
@@ -37,6 +38,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <junit.version>5.10.0</junit.version>
     <version.plugin.war>3.4.0</version.plugin.war>
+    <krazo.version>4.0.1</krazo.version>
   </properties>
 
   <profiles>
